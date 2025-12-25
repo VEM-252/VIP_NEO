@@ -32,3 +32,5 @@ uvloop
 flask
 gunicorn==20.1.0
 pyrogram>=2.0.10
+youtube-search
+youtube-search-python
