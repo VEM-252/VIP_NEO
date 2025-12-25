@@ -1,6 +1,3 @@
-import uvloop
-uvloop.install()
-
 import pyrogram
 import pyromod.listen  # noqa
 from pyrogram import Client
