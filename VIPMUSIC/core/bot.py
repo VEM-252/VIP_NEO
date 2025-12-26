@@ -83,4 +83,4 @@ class VIPBot(Client):
         LOGGER(__name__).info(f"Music Bot Started as {self.name}")
 
     async def stop(self):
-        await super().stop()s
+              await s.per().
