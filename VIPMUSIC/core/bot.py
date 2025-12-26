@@ -1,23 +1,25 @@
 import pyrogram
 from pyrogram import Client
-from pyrogram.enums import ChatMemberStatus, ParseMode
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
+from pyrogram.enums import ChatMemberStatus
+from pyrogram.types import (
+    BotCommand,
+    BotCommandScopeAllChatAdministrators,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeAllPrivateChats,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 import config
 from ..logging import LOGGER
 
-
 class VIPBot(Client):
     def __init__(self):
-        LOGGER(__name__).info(f"Starting bot...")
+        LOGGER(__name__).info("Starting Bot...")
         super().__init__(
-            name="VIPMUSIC",
+            "VIPMUSIC",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             bot_token=config.BOT_TOKEN,
-            in_memory=True,
-            parse_mode=ParseMode.HTML,
-            max_concurrent_transmissions=7,
         )
 
     async def start(self):
@@ -25,62 +27,74 @@ class VIPBot(Client):
         get_me = await self.get_me()
         self.username = get_me.username
         self.id = get_me.id
-        self.name = self.me.first_name + " " + (self.me.last_name or "")
-        self.mention = self.me.mention
+        self.name = f"{get_me.first_name} {get_me.last_name or ''}"
+        self.mention = get_me.mention
 
-        button = InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        text="Add Me To Your Group",
-                        url=f"https://t.me/{self.username}?startgroup=true",
-                    )
-                ]
-            ]
-        )
+        # Add Me Button
+        button = InlineKeyboardMarkup([[
+            InlineKeyboardButton("๏ ᴀᴅᴅ ᴍᴇ ɪɴ ɢʀᴏᴜᴘ ๏", url=f"https://t.me/{self.username}?startgroup=true")
+        ]])
 
+        # Send Log Notification
         if config.LOG_GROUP_ID:
             try:
-                await self.send_photo(
-                    config.LOG_GROUP_ID,
-                    photo=config.START_IMG_URL,
-                    caption=f"<b>🎵 Bot Started Successfully</b>\n\n"
-                            f"<b>Name:</b> {self.name}\n"
-                            f"<b>Username:</b> @{self.username}\n"
-                            f"<b>ID:</b> <code>{self.id}</code>\n\n"
-                            f"<i>Bot is now online and ready to serve!</i>",
-                    reply_markup=button,
+                log_text = (
+                    f"✨ **{self.name} Sᴛᴀʀᴛᴇᴅ Sᴜᴄᴄᴇssғᴜʟʟʏ!**\n\n"
+                    f"🆔 **ID:** `{self.id}`\n"
+                    f"👤 **Usᴇʀɴᴀᴍᴇ:** @{self.username}\n"
+                    f"💖 **Tʜᴀɴᴋs ғᴏʀ ᴜsɪɴɢ ᴍᴇ!**"
                 )
-            except pyrogram.errors.ChatWriteForbidden:
-                LOGGER(__name__).error("Bot cannot write to the log group")
-                try:
-                    await self.send_message(
-                        config.LOG_GROUP_ID,
-                        f"<b>🎵 Bot Started Successfully</b>\n\n"
-                        f"<b>Name:</b> {self.name}\n"
-                        f"<b>Username:</b> @{self.username}\n"
-                        f"<b>ID:</b> <code>{self.id}</code>\n\n"
-                        f"<i>Bot is now online and ready to serve!</i>",
-                        reply_markup=button,
-                    )
-                except Exception as e:
-                    LOGGER(__name__).error(f"Failed to send message in log group: {e}")
+                if config.START_IMG_URL:
+                    await self.send_photo(config.LOG_GROUP_ID, photo=config.START_IMG_URL, caption=log_text, reply_markup=button)
+                else:
+                    await self.send_message(config.LOG_GROUP_ID, log_text, reply_markup=button)
             except Exception as e:
-                LOGGER(__name__).error(f"Error while sending to log group: {e}")
-        else:
-            LOGGER(__name__).warning("LOG_GROUP_ID is not set")
+                LOGGER(__name__).error(f"Log Group Error: {e}")
 
-        if config.LOG_GROUP_ID:
+        # Setting Bot Commands
+        if config.SET_CMDS:
             try:
-                chat_member_info = await self.get_chat_member(
-                    config.LOG_GROUP_ID, self.id
+                # Commands for Private Chats
+                await self.set_bot_commands(
+                    [
+                        BotCommand("start", "Start the bot"),
+                        BotCommand("help", "Get help menu"),
+                        BotCommand("ping", "Check bot status"),
+                    ],
+                    scope=BotCommandScopeAllPrivateChats(),
                 )
-                if chat_member_info.status != ChatMemberStatus.ADMINISTRATOR:
-                    LOGGER(__name__).error("Please promote Bot as Admin in Logger Group")
+                # Commands for Groups
+                await self.set_bot_commands(
+                    [
+                        BotCommand("play", "Play audio"),
+                        BotCommand("vplay", "Play video"),
+                        BotCommand("skip", "Skip current track"),
+                        BotCommand("pause", "Pause track"),
+                        BotCommand("resume", "Resume track"),
+                        BotCommand("stop", "Stop music"),
+                        BotCommand("queue", "Check music queue"),
+                    ],
+                    scope=BotCommandScopeAllGroupChats(),
+                )
+                # Commands for Admins (Full List)
+                await self.set_bot_commands(
+                    [
+                        BotCommand("play", "Play audio"),
+                        BotCommand("vplay", "Play video"),
+                        BotCommand("settings", "Bot settings"),
+                        BotCommand("reload", "Reload bot"),
+                        BotCommand("end", "End stream"),
+                        BotCommand("lyrics", "Get lyrics"),
+                        BotCommand("playlist", "Your playlist"),
+                        BotCommand("sudolist", "Sudo users list"),
+                        BotCommand("gstats", "Global stats"),
+                    ],
+                    scope=BotCommandScopeAllChatAdministrators(),
+                )
             except Exception as e:
-                LOGGER(__name__).error(f"Error checking bot status: {e}")
+                LOGGER(__name__).error(f"Command Setup Error: {e}")
 
-        LOGGER(__name__).info(f"Music Bot Started as {self.name}")
+        LOGGER(__name__).info(f"MusicBot Started as {self.name}")
 
     async def stop(self):
-              await s.per().
+        await super().stop()
